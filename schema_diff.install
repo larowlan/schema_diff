@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * @file
+ * Contains module install/update hooks.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Link;
+
+/**
+ * Implements hook_requirements().
+ */
+function schema_diff_requirements($phase): array {
+  if ($phase === 'install') {
+    return [];
+  }
+  $requirements = [];
+  if ($change_list = \Drupal::entityDefinitionUpdateManager()->getChangeList()) {
+    $build = [];
+    foreach ($change_list as $entity_type_id => $details) {
+      $items = [];
+      $entity_type = \Drupal::entityTypeManager()->getDefinition($entity_type_id);
+      $fields = \Drupal::service('entity_field.manager')->getBaseFieldDefinitions($entity_type_id);
+      foreach ($details['field_storage_definitions'] ?? [] as $field_name => $type) {
+        if ($type !== EntityDefinitionUpdateManagerInterface::DEFINITION_UPDATED) {
+          continue;
+        }
+        if (!$field = $fields[$field_name] ?? NULL) {
+          continue;
+        }
+        assert($field instanceof FieldDefinitionInterface);
+        $items[] = Link::createFromRoute($field->getLabel(), 'schema_diff.field_diff', [
+          'entity_type_id' => $entity_type_id,
+          'field_name' => $field_name,
+        ]);
+      }
+      if ($items) {
+        $build[] = [
+          '#theme' => 'item_list',
+          '#title' => $entity_type->getLabel(),
+          '#items' => $items,
+        ];
+      }
+    }
+
+    $summary = \Drupal::service('renderer')->renderPlain($build);
+    $requirements['entity_update_detail'] = [
+      'title' => t('Entity/field definitions'),
+      'severity' => REQUIREMENT_ERROR,
+      'value' => t('Mismatched entity and/or field definitions detail'),
+      'description' => t('The following changes were detected in the entity type and field definitions. @updates', ['@updates' => $summary]),
+    ];
+  }
+  return $requirements;
+}

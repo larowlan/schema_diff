@@ -1,0 +1,6 @@
+schema_diff.field_diff:
+  path: '/admin/reports/schema-diff/{entity_type_id}/{field_name}'
+  requirements:
+    _permission: 'administer site configuration'
+  defaults:
+    _controller: '\Drupal\schema_diff\Controller\SchemaDiffController::fieldSchemaDiff'

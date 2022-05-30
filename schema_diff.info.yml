@@ -1,0 +1,4 @@
+name: Schema diff
+description: 'Shows schema diff in detail'
+core_version_requirement: ^8.8 || ~9.0
+type: module
